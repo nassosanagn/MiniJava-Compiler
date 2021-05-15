@@ -1,0 +1,16 @@
+BinaryTree                  =
+BubbleSort-error            =
+BubbleSort                  =
+Factortial-error            =
+Factortial                  =
+LinearSearch-error          =
+LinearSearch                =
+LinkedList-error            =
+LinkedList                  =
+MoreThan4-error             =
+MoreThan4                   =
+QuickSort-error             =
+QuickSort                   =
+test                        =
+TreeVisitor-error           =
+TreeVisitor                 =
