@@ -15,7 +15,6 @@ public class Main {
             System.exit(1);
         }
 
-        
         FileInputStream fis = null;
         try{
             for (int file = 0; file < args.length; file++){
@@ -27,10 +26,10 @@ public class Main {
 
                 System.err.println("Program parsed successfully.");
 
-                MyVisitor eval  = new MyVisitor(false);
-                MyVisitor typeCheck = new MyVisitor(true);
+                MyVisitor dataCollector  = new MyVisitor(false);   /* Call MyVisitor for the 1st time to create the Symbol Table */      
+                MyVisitor typeCheck = new MyVisitor(true);         /* Call MyVisitor for the 2nd time to do the typechecking */
                 
-                root.accept(eval, null);
+                root.accept(dataCollector, null);
                 root.accept(typeCheck, null);
 
                 /* Print offsets */
@@ -58,10 +57,10 @@ public class Main {
 class Function{
 
     String funName;
-    String funType;
+    String funType;                             /* The return type of the function */
     int numOfArgs;                              /* Τhe number of arguments in the function */
-    Map<String,String> argsArray;               /*  A map with function arguments as keys and argument types as values */
-    Map<String,String> varArray;                /*  A map with function variables as keys and variable types as values */
+    Map<String,String> argsArray;               /* A map with function arguments as keys and argument types as values */
+    Map<String,String> varArray;                /* A map with function variables as keys and variable types as values */
 
     public Function(String funName, String funType, int numOfArgs){
 
@@ -76,11 +75,10 @@ class Function{
 class Class{
 
     String className;
-    Map <String,String> classVarArray;              
-    List <Function> funList;                     
+    Map <String,String> classVarArray;      /* A map with class variables as keys and variable types as values */          
+    List <Function> funList;                /* A list with the class functions */
 
     public Class(String className){
-        
         this.className = className;
         this.classVarArray = new LinkedHashMap<String,String>();
         this.funList = new ArrayList<Function>();  
@@ -91,26 +89,28 @@ class SymbolTable{
 
     List <Class> classList;                             /* A list with all the classes */
     
+    /* Create the Symbol Table */
     public SymbolTable(String className){
         this.classList = new ArrayList<Class>();
         this.classList.add(new Class(className));  
     }
 
-    public void enter(String className){                /* Add a new class on the list */
+    /* Add a new class on the list */
+    public void enter(String className){
         this.classList.add(new Class(className));
     }
 
-    /* Insert the variable "varName" in class (currClass)  */
+    /* Insert the variable "varName" in the class with index "currClassIndex" */
     public void insertVarInClass(String varName, String varType, int currClassIndex){
         (this.classList.get(currClassIndex)).classVarArray.put(varName, varType);        
     }
 
-    /* Insert the function "functionName" in class (currClass) */
+    /* Insert the function "functionName" in the class with index "currClassIndex" */
     public void insertMethodInClass(String functionName, String returnType, int numOfArgs, int currClassIndex){
         (this.classList.get(currClassIndex)).funList.add(new Function(functionName, returnType, numOfArgs));
     }
 
-    /* Insert a new argument called "arguName" in the function calles "functionName" */
+    /* Insert a new argument "arguName" in the function "functionName" in the class with index "currClassIndex" */
     public void inserArguInMethod(String functionName, String arguName, String arguType, int currClassIndex){
         
         int funIndex = 0;
@@ -121,7 +121,7 @@ class SymbolTable{
         (this.classList.get(currClassIndex)).funList.get(funIndex).argsArray.put(arguName, arguType);   
     }
 
-    /* Insert a new variable called "varName" in the function calles "functionName" */
+    /* Insert a new variable "varName" in the function "functionName" in the class with index "currClassIndex" */
     public void inserVarInMethod(String functionName, String varName, String varType, int currClassIndex){
 
         int funIndex = 0;
@@ -132,49 +132,52 @@ class SymbolTable{
         (this.classList.get(currClassIndex)).funList.get(funIndex).varArray.put(varName, varType);
     }
 
-    /* Returns first occurrence of variable "varName" used inside the function "functionName" => Return nyll if var doesn't exist in the Symbol Table  */
+    /* Returns first occurrence of variable "varName" used inside the function "functionName" => Return null if var doesn't exist in the Symbol Table  */
     public String lookup(String varName, String functionName, int currClassIndex){
         
-        String type;
+        String varType;
         for (int i = currClassIndex; i >= 0; i--){                               /* For every class in this symbol table */
 
-            for (int j = 0; j < this.classList.get(i).funList.size(); j++){                 /* Check every function in the class with index i */
+            for (int j = 0; j < this.classList.get(i).funList.size(); j++){                 /* For every function in the class with index i */
                 
                 if ((this.classList.get(i).funList.get(j).funName).equals(functionName)){       /* Find the function called "functionName" */
                     
-                    type =  this.classList.get(i).funList.get(j).varArray.get(varName);      /* Check function's local variables to find "varName" */
+                    /* Check function's local variables to find "varName" */
+                    varType =  this.classList.get(i).funList.get(j).varArray.get(varName);
 
-                    if (type != null)    /* If we find the variable in the map => return the variable's type */
-                        return type;
+                    if (varType != null)    /* If we find the variable in the map => return the variable's type */
+                        return varType;
 
-                    type =  this.classList.get(i).funList.get(j).argsArray.get(varName);        /* Check function's parameters to find "varName" */
+                    /* Check function's arguments to find "varName" */
+                    varType =  this.classList.get(i).funList.get(j).argsArray.get(varName);
 
-                    if (type != null)
-                        return type;
+                    if (varType != null)
+                        return varType;
                 }
             }
             
-            type = this.classList.get(i).classVarArray.get(varName);      /* If the variable isn't inside of a method => Search the class variables */
+            /* If the variable isn't in function's local variables or on function's arguments => Search the class variables */
+            varType = this.classList.get(i).classVarArray.get(varName);
 
-            if (type != null)
-                return type;     
+            if (varType != null)
+                return varType;     
         }
-
-        return null;        /* The variable called "varName" wasn't found => return null */
+        return null;        /* The variable called "varName" wasn't found in the Symbol Table => return null */
     }
 
-    public String findClassName(String className){
+    /* Check if class called "className" exists in this Symbol Table => return "false" if it doesn't */
+    public boolean findClassName(String className){
 
         for (int i = this.classList.size() - 1; i >= 0; i--){                   /* For every class in the classList */
             if ((this.classList.get(i).className).equals(className))
-                return this.classList.get(i).className;
+                return true;
         }
 
-        return null;
+        return false;
     }
 
-    /* Returns the number of arguments of function called "functionName" or -1 if function doesn't exist */
-    public int getNumOfArguments (String functionName){
+    /* Return the number of arguments of function called "functionName" or -1 if "functionName" doesn't exist */
+    public int getNumOfArguments(String functionName){
 
         for (int i = this.classList.size() - 1; i >= 0; i--){                      /* For every class in this symbol table */
             for (int j = 0; j < this.classList.get(i).funList.size(); j++) {            /* For every function in the class */
@@ -183,10 +186,10 @@ class SymbolTable{
                     return this.classList.get(i).funList.get(j).numOfArgs;
             }
         }   
-
         return -1;
     }
 
+    /* Prints the Symbol Table and the offsets if there are no errors after typechecking */
     public void PrintOffsets(){
 
         int offset = 0;         /* offset for variables */
@@ -279,6 +282,7 @@ class SymbolTable{
         return this.classList.get(currClassIndex).className;
     }
 
+    /* Search for the function called "functionName" only inside the class called "className" => Return function's type if it exists */
     public String findFunName(String functionName, String className){
 
         for (int i = this.classList.size() - 1 ; i >= 0; i--){                               /* For every class in this symbol table */
@@ -293,6 +297,7 @@ class SymbolTable{
         return null;
     }
 
+    /* Search for the function called "functionName" in all the classes of this Symbol Table => Return function's type if it exists */
     public String findFunName(String functionName){
 
         for (int i = this.classList.size() - 1 ; i >= 0; i--){                               /* For every class in this symbol table */
@@ -338,27 +343,28 @@ class SymbolTable{
     }
 }
 
-class MyVisitor extends GJDepthFirst<String, String>{
+class MyVisitor extends GJDepthFirst<String,String>{
 
-    static List <SymbolTable> st = new ArrayList<SymbolTable>();        /* The list with the SymbolTables */
-    int currSymbolTable;                                            /* We have a new Symbol table everytime we have a new ClassDeclaration */
-    int currClass;                                                  /* We have a new Class in the classList everytime we have a new ClassExtendsDeclaration */
-    boolean typeCheck;                                                  /* If flag typecheck == true, it's the second time we call MyVisitor to check the variables */
+    static List <SymbolTable> st = new ArrayList<SymbolTable>();     /* The list with the SymbolTables */
+    int currSymbolTable;                                             /* currSymbolTable = current ST index => We have a new Symbol table everytime we have a new ClassDeclaration */
+    int currClass;                                                   /* currClass = current class index inside of this ST => We have a new Class in the classList everytime we have a new ClassExtendsDeclaration */
+    boolean typeCheck;                                               /* If flag typecheck == true, it's the second time we call MyVisitor to check the variables */
 
+    /* Initialize MyVisitor variables */
     public MyVisitor(boolean typeCheck){
         this.typeCheck = typeCheck;
         this.currSymbolTable = 0;    
         this.currClass = 0;
     }
 
-    /* Find the index of the Symbol Table that contains the class called "className" or -1 if it doesn't exist */
+    /* Find the index of the Symbol Table that contains the class called "className" => Return -1 if it doesn't exist */
     public int findSTindex(String className){
 
         /* For every symbol table */         
         for (int i = 0; i < st.size(); i++){
 
             /* If you find the "className" return the st index */
-            if (st.get(i).findClassName(className) != null) 
+            if (st.get(i).findClassName(className)) 
                 return i;
         }
         return -1;
@@ -444,8 +450,6 @@ class MyVisitor extends GJDepthFirst<String, String>{
      */
     public String visit(MainClass n, String argu) throws Exception {
 
-        currSymbolTable = 0;
-
         if (!typeCheck){
 
             String classname = n.f1.accept(this,argu);
@@ -473,7 +477,6 @@ class MyVisitor extends GJDepthFirst<String, String>{
         }
         
         super.visit(n, argu);
-        currSymbolTable = 0;
         return "method delc";
     }
 
