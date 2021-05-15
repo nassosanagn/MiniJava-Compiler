@@ -35,6 +35,7 @@ public class Main {
                 /* Print offsets */
                 System.out.println("-------------------- Output -------------------- \n");
                 typeCheck.output();                        
+                typeCheck.deleteSymbolTables();
             }
         }
         catch(ParseException ex){
@@ -368,6 +369,10 @@ class MyVisitor extends GJDepthFirst<String,String>{
                 return i;
         }
         return -1;
+    }
+
+    public void deleteSymbolTables(){
+        st.clear();
     }
 
     public void output(){
