@@ -15,6 +15,7 @@ public class Main {
             System.exit(1);
         }
 
+        
         FileInputStream fis = null;
         try{
             for (int file = 0; file < args.length; file++){
