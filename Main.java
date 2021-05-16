@@ -1338,11 +1338,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
                     }
                     
                     if (args[x].contains("this")){
-<<<<<<< HEAD
-                        //argsTypes.add(className);
-=======
                         argsTypes.add(st.get(currSymbolTable).getClassName(currClass));
->>>>>>> 08de2f88a2e1f01cd56695465a1f2b8b62a9c15f
                         continue;
                     }
 
