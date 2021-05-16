@@ -16,7 +16,6 @@ class TV {
 	int nti ;
 	MyVisitor v ;
 
-	nti = true + true;
 	root = new Tree();
 	ntb = root.Init(16);
 	ntb = root.Print();
@@ -56,8 +55,6 @@ class Tree{
     boolean has_left ;
     boolean has_right ;
     Tree my_null ;
-
-
 
     //Tree new_node ;
     //Tree current_node ;
@@ -334,6 +331,7 @@ class Visitor {
     Tree r ;
 
     public int visit(Tree n){
+	
 	int nti ;
 
 	if (n.GetHas_Right()){

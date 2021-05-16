@@ -23,16 +23,15 @@ public class Main {
                 MiniJavaParser parser = new MiniJavaParser(fis);
 
                 Goal root = parser.Goal();
+                System.out.println("\nFile: " + args[file] + "\n");
 
-                System.err.println("Program parsed successfully.");
-
-                MyVisitor dataCollector  = new MyVisitor(false);   /* Call MyVisitor for the 1st time to create the Symbol Table */      
+                MyVisitor dataCollector  = new MyVisitor(false);   /* Call MyVisitor for the 1st time to create the Symbol Table List */      
                 MyVisitor typeCheck = new MyVisitor(true);         /* Call MyVisitor for the 2nd time to do the typechecking */
                 
                 root.accept(dataCollector, null);
                 root.accept(typeCheck, null);
 
-                /* Print offsets */
+                /* Print offsets for this file => If there are no errors */
                 System.out.println("-------------------- Output -------------------- \n");
                 typeCheck.output();                        
                 typeCheck.deleteSymbolTables();
@@ -190,6 +189,126 @@ class SymbolTable{
         return -1;
     }
 
+    /* Function to search for a variable "varName" in function's called "functionName" arguments and local variables */
+    public String funVarReDeclaration(String varName, String functionName, int currClassIndex){     
+
+        String type;
+
+        for (int j = 0; j < this.classList.get(currClassIndex).funList.size(); j++){                 /* Check every function in the class with index i */
+            
+            if ((this.classList.get(currClassIndex).funList.get(j).funName).equals(functionName)){       /* Find the function called "functionName" */
+            
+                type =  this.classList.get(currClassIndex).funList.get(j).argsArray.get(varName);        /* Check function's parameters to find "varName" */
+
+                if (type != null)
+                    return type;
+
+                type = this.classList.get(currClassIndex).funList.get(j).varArray.get(varName);
+
+                if (type != null)
+                    return type;
+            }
+        }
+        return null;        /* The variable called "varName" wasn't found => return null */
+    }
+
+    /* Function to search for a variable "varName" only in function's called "functionName" arguments */
+    public String funArguReDeclaration(String varName, String functionName, int currClassIndex){     
+
+        for (int j = 0; j < this.classList.get(currClassIndex).funList.size(); j++){                 /* Check every function in the class with index i */
+            
+            if ((this.classList.get(currClassIndex).funList.get(j).funName).equals(functionName)){       /* Find the function called "functionName" */
+            
+                String type =  this.classList.get(currClassIndex).funList.get(j).argsArray.get(varName);        /* Check function's parameters to find "varName" */
+
+                if (type != null)
+                    return type;
+            }
+        }
+        return null;        /* The variable called "varName" wasn't found => return null */
+    }
+
+     /* Function to search for a variable "varName" only in function's called "functionName" arguments */
+     public String classVarReDeclaration(String varName, int currClassIndex){     
+
+        return this.classList.get(currClassIndex).classVarArray.get(varName);
+    }
+
+    /* Return the class name of the class with index "currClassIndex" */
+    public String getClassName(int currClassIndex){
+        return this.classList.get(currClassIndex).className;
+    }
+
+    /* Search for the function called "functionName" only inside the class called "className" => Return function's type if it exists */
+    public String findFunName(String functionName, String className){
+
+        for (int i = this.classList.size() - 1 ; i >= 0; i--){                               /* For every class in this symbol table */
+
+            if (this.classList.get(i).className.equals(className)){
+                for (int j = 0; j < this.classList.get(i).funList.size(); j++){                 /* Check every function in the class with index i */
+                    if ((this.classList.get(i).funList.get(j).funName).equals(functionName))       /* Find the function called "functionName" */
+                        return this.classList.get(i).funList.get(j).funType;
+                }
+            }
+        }
+        return null;
+    }
+
+    /* Search for the function called "functionName" in all the classes of this Symbol Table => Return function's type if it exists */
+    public String findFunName(String functionName){
+
+        for (int i = this.classList.size() - 1 ; i >= 0; i--){                               /* For every class in this symbol table */
+
+            for (int j = 0; j < this.classList.get(i).funList.size(); j++){                 /* Check every function in the class with index i */
+                
+                if ((this.classList.get(i).funList.get(j).funName).equals(functionName))       /* Find the function called "functionName" */
+                    return this.classList.get(i).funList.get(j).funType;
+            }
+        }
+        return null;
+    }
+
+    /* Check if there is a method with the same name in a parent (only for classExtendsDeclaration) => if there is it must have the same arguments and the same return type*/
+    public void sameFunDefinition(String functionName, String argsList, String methodsType){
+        
+        for (int i = this.classList.size() - 1 ; i >= 0; i--){      /* For every class in this symbol table */
+
+            for (int j = 0; j < this.classList.get(i).funList.size(); j++){       /* Check every function in the class with index i */
+
+                if ((this.classList.get(i).funList.get(j).funName).equals(functionName)){  /* Find if there is a function called "functionName" */
+
+                    String funType = this.classList.get(i).funList.get(j).funType;
+
+                    /* Both methods should have the same return type */
+                    if (methodsType.equals(funType) == false){                   /* args[y] = argumentsType */   
+                        System.err.println("error: in method overriding function called: " + functionName);
+                        System.exit(1);
+                    }
+
+                    /* Both arguments should have the same arguments (types and number) */
+                    String[] temp = argsList.split(", |,");
+                    
+                    for (int x = 0; x < temp.length ; x++){     /* Check if the function arguments match */
+
+                        String[] args = temp[x].split(" ");
+
+                        for (int y = 0; y < args.length - 1; y+=2){
+                            
+                            /* args[y+1] = argumentsName */
+                            String argumentsType = this.classList.get(i).funList.get(j).argsArray.get(args[y+1]);
+
+                            /* If argument doesn't exist or if arguments type doesn't match */
+                            if ((argumentsType == null) || (argumentsType.equals(args[y]) == false)){                   /* args[y] = argumentsType */   
+                                System.err.println("error: in method overriding function called: " + functionName);
+                                System.exit(1);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /* Prints the Symbol Table and the offsets if there are no errors after typechecking */
     public void PrintOffsets(){
 
@@ -240,108 +359,6 @@ class SymbolTable{
             }
         }
     }
-
-    /* Function to search for a variable "varName" only in function's called "functionName" arguments. Used to check for double variable declaration errors */
-    public String funVarReDeclaration(String varName, String functionName, int currClassIndex){     
-
-        String type;
-        for (int i = currClassIndex; i >= 0; i--){                               /* For every class in this symbol table */
-            
-            for (int j = 0; j < this.classList.get(i).funList.size(); j++){                 /* Check every function in the class with index i */
-                
-                if ((this.classList.get(i).funList.get(j).funName).equals(functionName)){       /* Find the function called "functionName" */
-                
-                    type =  this.classList.get(i).funList.get(j).argsArray.get(varName);        /* Check function's parameters to find "varName" */
-
-                    if (type != null)
-                        return type;
-                }
-            }
-        }
-        return null;        /* The variable called "varName" wasn't found => return null */
-    }
-
-    /* Function to search for a variable "varName" only in function's called "functionName" arguments. Used to check for double variable declaration errors */
-    public String funArguReDeclaration(String varName, String functionName, int currClassIndex){     
-
-        String type;
-
-        for (int j = 0; j < this.classList.get(currClassIndex).funList.size(); j++){                 /* Check every function in the class with index i */
-            
-            if ((this.classList.get(currClassIndex).funList.get(j).funName).equals(functionName)){       /* Find the function called "functionName" */
-            
-                type =  this.classList.get(currClassIndex).funList.get(j).argsArray.get(varName);        /* Check function's parameters to find "varName" */
-
-                if (type != null)
-                    return type;
-            }
-        }
-        return null;        /* The variable called "varName" wasn't found => return null */
-    }
-
-    public String getClassName(int currClassIndex){
-        return this.classList.get(currClassIndex).className;
-    }
-
-    /* Search for the function called "functionName" only inside the class called "className" => Return function's type if it exists */
-    public String findFunName(String functionName, String className){
-
-        for (int i = this.classList.size() - 1 ; i >= 0; i--){                               /* For every class in this symbol table */
-
-            if (this.classList.get(i).className.equals(className)){
-                for (int j = 0; j < this.classList.get(i).funList.size(); j++){                 /* Check every function in the class with index i */
-                    if ((this.classList.get(i).funList.get(j).funName).equals(functionName))       /* Find the function called "functionName" */
-                        return this.classList.get(i).funList.get(j).funType;
-                }
-            }
-        }
-        return null;
-    }
-
-    /* Search for the function called "functionName" in all the classes of this Symbol Table => Return function's type if it exists */
-    public String findFunName(String functionName){
-
-        for (int i = this.classList.size() - 1 ; i >= 0; i--){                               /* For every class in this symbol table */
-
-            for (int j = 0; j < this.classList.get(i).funList.size(); j++){                 /* Check every function in the class with index i */
-                
-                if ((this.classList.get(i).funList.get(j).funName).equals(functionName))       /* Find the function called "functionName" */
-                    return this.classList.get(i).funList.get(j).funType;
-            }
-        }
-        return null;
-    }
-
-    public void checkFunArguments(String functionName, String argsList){
-        
-        for (int i = this.classList.size() - 1 ; i >= 0; i--){                               /* For every class in this symbol table */
-
-            for (int j = 0; j < this.classList.get(i).funList.size(); j++){                 /* Check every function in the class with index i */
-
-                if ((this.classList.get(i).funList.get(j).funName).equals(functionName)){       /* Find the function called "functionName" */
-
-                    String[] temp = argsList.split(", |,");
-                    
-                    for (int x = 0; x < temp.length ; x++){     /* Check if the function arguments match */
-
-                        String[] args = temp[x].split(" ");
-
-                        for (int y = 0; y < args.length - 1; y+=2){
-                            
-                            /* args[y+1] = argumentsName and args[y] = argumentsType */
-                            String argumentsType = this.classList.get(i).funList.get(j).argsArray.get(args[y+1]);
-
-                            /* If argument doesn't exist or if arguments type doesn't match */
-                            if ((argumentsType == null) || (argumentsType.equals(args[y]) == false)){               
-                                System.err.println("Error: in method overriding function called: " + functionName);
-                                System.exit(1);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 class MyVisitor extends GJDepthFirst<String,String>{
@@ -371,10 +388,12 @@ class MyVisitor extends GJDepthFirst<String,String>{
         return -1;
     }
 
+    /* Delete the list with the symbol tables */
     public void deleteSymbolTables(){
         st.clear();
     }
 
+    /* Function to print the offsets for every symbol table */
     public void output(){
 
         /* Print every symbolTable */
@@ -394,11 +413,11 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
     public void checkFunArguments(String functionName, ArrayList<String> argsTypeList, int currST){
 
-        for (int i = st.get(currST).classList.size() - 1 ; i >= 0; i--){                               /* For every class in this symbol table */
+        for (int i = st.get(currST).classList.size() - 1 ; i >= 0; i--){        /* For every class in this symbol table */
 
-            for (int j = 0; j < st.get(currST).classList.get(i).funList.size(); j++){                 /* Check every function in the class with index i */
+            for (int j = 0; j < st.get(currST).classList.get(i).funList.size(); j++){     /* Check every function in the class with index j */
 
-                if ((st.get(currST).classList.get(i).funList.get(j).funName).equals(functionName)){       /* Find the function called "functionName" */
+                if ((st.get(currST).classList.get(i).funList.get(j).funName).equals(functionName)){   /* Find the function called "functionName" */
                 
                     List<String> values = new ArrayList(st.get(currST).classList.get(i).funList.get(j).argsArray.values());
 
@@ -406,11 +425,11 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
                         boolean flag = false;
 
-                        if (argsTypeList.get(x).equals(values.get(x)) == false){
+                        if (argsTypeList.get(x).equals(values.get(x)) == false){    /* If argument types do not match => check if it's a parent class*/
 
                             int stIndex = this.findSTindex(values.get(x));
 
-                            if (stIndex != -1){
+                            if (stIndex != -1){     /* Check if "values.get(x)" is a className => then check if parent classes names match with the arguType*/
                                                                 
                                 for (int y = st.get(stIndex).classList.size() - 1 ; y >= 0; y--){
                                     
@@ -422,10 +441,9 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
                                 if (flag)
                                     continue;
-                            
-                                System.err.println("einaiaaaa idiaaaaa: " + argsTypeList.get(x) + " kai " + values.get(x) + " sti sinartisi: " + functionName);
-                                System.exit(1);
                             }
+                                System.err.println("error: argument types do not match: " + argsTypeList.get(x) + " and " + values.get(x) + " in function: " + functionName);
+                                System.exit(1);
                         }   
                     }
                 }
@@ -459,22 +477,28 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
             String classname = n.f1.accept(this,argu);
             
-            st.add(new SymbolTable(classname));                                                             // add symboltable
+            st.add(new SymbolTable(classname));                                     /* add a new Symbol Table */
             st.get(currSymbolTable).insertVarInClass(n.f11.accept(this,argu), "String[]", currClass);
 
-            NodeListOptional varDecls = n.f14;                                       /* f14 VARIABLE DECLARATIONS */
+            NodeListOptional varDecls = n.f14;             /* f14 VARIABLE DECLARATIONS */
             for (int i = 0; i < varDecls.size(); ++i) {
                 VarDeclaration varDecl = (VarDeclaration) varDecls.elementAt(i);
                 String varId = varDecl.f1.accept(this,argu);
                 String varType = varDecl.f0.accept(this,argu);
-                st.get(currSymbolTable).insertVarInClass(varId, varType, currClass);                        // insert variables in class table
-            }
 
-            System.out.println();
+                /* Check if there is already a variable with the same name in the class */
+                if (st.get(currSymbolTable).classVarReDeclaration(varId, currClass) != null){
+                    System.err.println("error: class variable: " + varId + " double declaration");
+                    System.exit(1);
+                }
+
+                /* Insert the class variables in this st */
+                st.get(currSymbolTable).insertVarInClass(varId, varType, currClass);
+            }
             
-        }else{
+        }else{      /* If it's time for typechecking */
         
-            NodeListOptional statDecls = n.f15;                                       /* visit all statements */
+            NodeListOptional statDecls = n.f15;            /* Visit each statement */
             for (int i = 0; i < statDecls.size(); ++i) {
                 Statement statDecl = (Statement) statDecls.elementAt(i);
                 statDecl.f0.accept(this,"main");
@@ -503,37 +527,46 @@ class MyVisitor extends GJDepthFirst<String,String>{
      */
     public String visit(ClassDeclaration n, String argu) throws Exception {
 
-        currSymbolTable++;                                      /* Add a new symbol table for the new class declaration */
+        currSymbolTable++;                          /* Add a new symbol table for the new class declaration */
         String className = n.f1.accept(this,argu);
 
         if (!typeCheck){
 
             /* Check if a class called "className" already exists */
             if (this.findSTindex(className) != -1){
-                System.err.println("Error: Class " + className + " double Declaration");
+                System.err.println("error: Class " + className + " double Declaration");
                 System.exit(1);
             }
 
-            st.add(new SymbolTable(className));                              // add a new symboltable
+            st.add(new SymbolTable(className));     /* Add a new Symbol Table */
 
-            NodeListOptional varDecls = n.f3;                                       /* Print the variable inside this class */
+            NodeListOptional varDecls = n.f3;                   /* f3 Variable Declarations */
             for (int i = 0; i < varDecls.size(); ++i) {
                 VarDeclaration varDecl = (VarDeclaration) varDecls.elementAt(i);
                 String varId = varDecl.f1.accept(this,argu);
                 String varType = varDecl.f0.accept(this,argu);
+
+                /* Check if there is already a variable with the same name in the class */
+                if (st.get(currSymbolTable).classVarReDeclaration(varId, currClass) != null){
+                    System.err.println("error: class variable: " + varId + " double declaration");
+                    System.exit(1);
+                }
+
+                /* Insert the class variables in this Symbol Table */
                 st.get(currSymbolTable).insertVarInClass(varId, varType, currClass);    
             }
 
-            NodeListOptional methodDecls = n.f4;                                       /* Print the methods inside this class */
-            for (int i = 0; i < methodDecls.size(); ++i){
+            NodeListOptional methodDecls = n.f4;                                      
+            for (int i = 0; i < methodDecls.size(); ++i){           /*  f4 Method Declarations */
 
                 MethodDeclaration methodDecl = (MethodDeclaration) methodDecls.elementAt(i);
                 String methodName = methodDecl.f2.accept(this,argu);
                 String methodsType = methodDecl.f1.accept(this,argu);
 
-                int numOfArgs; 
+                int numOfArgs;
                 String argumentList = methodDecl.f4.present() ? methodDecl.f4.accept(this,argu) : "";      /* Get the function arguments */
 
+                /* Get the number of the arguments */
                 if (argumentList.isEmpty())
                     numOfArgs = 0;
                 else{
@@ -543,12 +576,12 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
                 /* Check if there is already a function with this name in the same class => error */
                 if (st.get(currSymbolTable).findFunName(methodName, className) != null){
-                    System.err.println("Error: function " + methodName + " double Declaration");
+                    System.err.println("error: function " + methodName + " double Declaration");
                     System.exit(1);
                 }else
+                    /* Insert this class method in this Symbol Table */
                     st.get(currSymbolTable).insertMethodInClass(methodName, methodsType, numOfArgs, currClass);    
             }
-            System.out.println();
         }
 
         return super.visit(n, argu);
@@ -567,7 +600,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
     public String visit(ClassExtendsDeclaration n, String argu) throws Exception {
         
         String className = n.f1.accept(this,argu);
-        currClass++;
+        currClass++;                                    /* Add a new class in the current Symbol Table */
 
         if (!typeCheck){
 
@@ -577,22 +610,30 @@ class MyVisitor extends GJDepthFirst<String,String>{
             int STindex = this.findSTindex(extendsClass);
             
             if (STindex == -1){
-                System.err.println("THERE IS NO CLASS");
+                System.err.println("error: there is no class called: " + extendsClass);
                 System.exit(1);
             }
 
-            st.get(STindex).enter(className);
+            st.get(STindex).enter(className);    /* Add a new class in the current Symbol Table with index (STIndex) */
 
-            NodeListOptional varDecls = n.f5;                                       /* Print the variable inside this function */
+            NodeListOptional varDecls = n.f5;          /* f5 Variable Declarations */
 
             for (int i = 0; i < varDecls.size(); ++i){
                 VarDeclaration varDecl = (VarDeclaration) varDecls.elementAt(i);
                 String varId = varDecl.f1.accept(this,argu);
                 String varType = varDecl.f0.accept(this,argu);
+
+                /* Check if there is already a variable with the same name in the class */
+                if (st.get(currSymbolTable).classVarReDeclaration(varId, currClass) != null){
+                    System.err.println("error: class variable: " + varId + " double declaration");
+                    System.exit(1);
+                }
+
+                /* Insert the class variables in this st */
                 st.get(STindex).insertVarInClass(varId,varType,currClass);
             }
 
-            NodeListOptional methodDecls = n.f6;                                       /* Print the methods inside this class */
+            NodeListOptional methodDecls = n.f6;               /* f6 Method Declarations */
             for (int i = 0; i < methodDecls.size(); ++i){
 
                 MethodDeclaration methodDecl = (MethodDeclaration) methodDecls.elementAt(i);
@@ -601,7 +642,8 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
                 int numOfArgs; 
                 String argumentList = methodDecl.f4.present() ? methodDecl.f4.accept(this,argu) : "";      /* Get the function arguments */
-                
+
+                /* Get the number of the arguments */
                 if (argumentList.isEmpty())
                     numOfArgs = 0;
                 else{
@@ -609,11 +651,11 @@ class MyVisitor extends GJDepthFirst<String,String>{
                     numOfArgs = args.length;
                 }
 
-                st.get(STindex).checkFunArguments(methodName, argumentList);
-
+                /* Check if there is a method with the same name in the new class => if there is it must have the same arguments and the same returj type*/
+                st.get(STindex).sameFunDefinition(methodName, argumentList, methodsType);
+                /* Insert this class method in this Symbol Table */
                 st.get(STindex).insertMethodInClass(methodName, methodsType, numOfArgs, currClass);    
             }
-
         }
 
         super.visit(n, argu);
@@ -663,10 +705,9 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
                     /* Check if an argument name is declared more than once */
                     if (st.get(currSymbolTable).funArguReDeclaration(args[j+1], methodName, currClass) != null){
-                        System.err.println("Error: double variable " + args[j+1] + " declaration in method: " + methodName);
+                        System.err.println("error: double variable " + args[j+1] + " declaration in method: " + methodName);
                         System.exit(1);
                     }
-
                     st.get(currSymbolTable).inserArguInMethod(methodName, args[j+1], args[j], currClass);       /* args[j+1] = arguName and args[j] = arguType */
                 }
             }
@@ -677,30 +718,24 @@ class MyVisitor extends GJDepthFirst<String,String>{
                 VarDeclaration varDecl = (VarDeclaration) varDecls.elementAt(i);
                 String varId = varDecl.f1.accept(this,argu);
                 String varType = varDecl.f0.accept(this,argu);
+                
+                /* Check if an method's variable name is declared more than once (in arguments or in method's body)*/
+                if (st.get(currSymbolTable).funVarReDeclaration(varId, methodName, currClass) != null){
+                    System.err.println("error: double variable " + varId + " declaration in method: " + methodName);
+                    System.exit(1);
+                }
                 st.get(currSymbolTable).inserVarInMethod(methodName, varId, varType, currClass);
             }
             
         }else{      /* If it's time for typechecking */
 
-            /* Check for double variable declarations */
-            NodeListOptional varDecls = n.f7;
-            for (int i = 0; i < varDecls.size(); ++i) {
-                VarDeclaration varDecl = (VarDeclaration) varDecls.elementAt(i);
-                String varId = varDecl.f1.accept(this,argu);
-                
-                if (st.get(currSymbolTable).funVarReDeclaration(varId, methodName, currClass) != null){
-                    System.err.println("Error: double variable " + varId + " declaration in method: " + methodName);
-                    System.exit(1);
-                }
-            }
-            
             String returnVar = n.f10.accept(this, methodName);
 
             /* If expression is a number => then the function must return int */
             if (this.isNumeric(returnVar)){
 
                 if (methodsType.equals("int") == false){
-                    System.err.println("Error: incompatible types: int cannot be converted to " + methodsType);
+                    System.err.println("error: incompatible types: int cannot be converted to " + methodsType);
                     System.exit(1);
                 }
             
@@ -708,7 +743,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
             }else if (returnVar.equals("true") || returnVar.equals("false")){
 
                 if ((methodsType.equals("boolean") == false)){
-                    System.err.println("Error: incompatible types: boolean cannot be converted to " + methodsType);
+                    System.err.println("error: incompatible types: boolean cannot be converted to " + methodsType);
                     System.exit(1);
                 }
 
@@ -716,30 +751,30 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
                 String typeRetVar;
 
-                if (returnVar.equals("this"))
+                if (returnVar.equals("this"))                                        /* Return type is the className */
                     typeRetVar = st.get(currSymbolTable).getClassName(currClass);
 
-                else if (returnVar.contains("MessageSend "))               /* If it's returning a function call then we alredy have the return type */
+                else if (returnVar.contains("MessageSend "))             /* If it's returning a function call then we alredy have the return type */
                     typeRetVar = returnVar.replace("MessageSend ","");
 
-                else
+                else                                                                                /* If it's a variable get the varType */
                     typeRetVar = st.get(currSymbolTable).lookup(returnVar, methodName, currClass);
                 
                 /* If we have different return types */
-                if ((typeRetVar.equals(methodsType) == false)){
-                    System.err.println("Error: incompatible return types: "+ typeRetVar + " cannot be converted to " + methodsType);
+                if ((methodsType.equals(typeRetVar) == false)){
+                    System.err.println("error: incompatible return types: "+ typeRetVar + " cannot be converted to " + methodsType);
                     System.exit(1);
                 }
             }
 
-            NodeListOptional statDecls = n.f8;                                       /* f15 STATEMENTS */
+            NodeListOptional statDecls = n.f8;              /* Visit each statement */
             for (int i = 0; i < statDecls.size(); ++i) {
                 Statement statDecl = (Statement) statDecls.elementAt(i);
                 statDecl.f0.accept(this,methodName);
             }          
         }
         
-        return "method delc";
+        return "MethodDeclaration";
     }
 
     /**
@@ -857,8 +892,8 @@ class MyVisitor extends GJDepthFirst<String,String>{
     */ 
     public String visit(AssignmentStatement n, String methodName) throws Exception {
 
-        String expr = n.f2.accept(this,methodName);
         String identifier = n.f0.accept(this,methodName);
+        String expr = n.f2.accept(this,methodName);
 
         if (typeCheck){
             
@@ -871,59 +906,66 @@ class MyVisitor extends GJDepthFirst<String,String>{
                 System.exit(1);
             }
 
-            if (expr.contains("ArrayAllocationExpression ")){                     /* If it's a new int[] (array allocation) */
+            if (expr.contains("ArrayAllocationExpression ")){         /* If it's a new int[] (array allocation) */
 
+                /* idType must be int array */
                 if (idType.equals("int[]") == false){
-                    System.err.println("error: in AllocationExpression " + idType + " cannot be converted to int[]");
+                    System.err.println("error: incompatible types: " + idType + " cannot be converted to int[]");
                     System.exit(1);
                 }
 
-            }else if ((expr.contains("AllocationExpression"))){                 /* If it's new class allocation e.g. new A() */
+            }else if ((expr.contains("AllocationExpression"))){       /* If it's new class allocation e.g. new A() */
 
                 String className = expr.replace("AllocationExpression", "");
 
+                /* Check if idType and className match */
                 if (idType.equals(className) == false){
-                    System.err.println("error: in AllocationExpression " + idType + " cannot be converted to " + className);
+                    System.err.println("error: incompatible types: " + idType + " cannot be converted to " + className);
                     System.exit(1);
                 }
 
             }else if (expr.contains("MessageSend ")){           /* If it's a message send */
 
-                expr = expr.replace("MessageSend ", "");
-                String className = expr;
+                String exprType = expr.replace("MessageSend ", "");
 
-                if (idType.equals(className) == false){                
-                    System.err.println("error: bad assignement: " + idType + " and " + className);
+                /* Check if idType and exprType match */
+                if (idType.equals(exprType) == false){                
+                    System.err.println("error: incompatible types: " + idType + " cannot be converted to " + exprType);
                     System.exit(1);
                 }
 
-            }else{                                          /* If it's a variable, or a number or primary expression e.g. 5 + 5 */
+            }else{       /* If it's a variable, or a number or a PrimaryExpression e.g. x + 5 */
 
-                String temp[] = expr.split(" ");
+                String temp[] = expr.split(" ");    /* Split the expression in words */
+
                 for (int i = 0; i < temp.length ; i++){
 
                     if (this.isNumeric(temp[i])){                          /* If it's a number */
-                           
-                        if (idType.equals("int") == false){              /* check if identifier is type int */
+
+                        /* Identifier must be type int */
+                        if (idType.equals("int") == false){
                             System.out.println(expr);
-                            System.err.println("error: different assignement variable types: " + idType + " and int");
+                            System.err.println("error: incompatible types: " + idType + " cannot be converted to int");
                             System.exit(1);
                         }
 
                     }else{
 
-                        if (!(temp[i].isEmpty()|| temp[i].contains(".") || temp[i].contains("()") || temp[i].contains("new") || temp[i].contains("+") || temp[i].contains("-") 
-                        || temp[i].contains(")")|| temp[i].contains(",")|| temp[i].contains("this") || temp[i].contains("[") || temp[i].contains("true") || temp[i].contains("false"))){                      /* if temp[i] is a variable */
+                        /* Ignore symbols and words like "this", "true", "false" */
+                        if (!(temp[i].isEmpty() ||temp[i].contains(".")  || temp[i].contains("&&") || temp[i].contains("+") || temp[i].contains("-") || temp[i].contains("*") || temp[i].contains("ArrayLookup") 
+                        || temp[i].contains("<") || temp[i].contains(")")|| temp[i].contains(",")|| temp[i].contains("this") || temp[i].contains("[") || temp[i].contains("true") || temp[i].contains("false"))){                      /* if temp[i] is a variable */
                             
                             String varType = st.get(stIndex).lookup(temp[i], methodName, currClass);
 
+                            /* Check if variable exists in the Symbol Table (has been declared) */
                             if (varType == null){
                                 System.err.println("error: cannot find symbol: " + temp[i]);
                                 System.exit(1);
                             }
 
+                            /* Check if idType and varType matches => or bad assignment */
                             if (idType.equals(varType) == false){
-                                System.err.println("error: bad assignement: " + idType + " and " + varType);
+                                System.err.println("error: incompatible types: " + idType + " cannot be converted to " + varType);
                                 System.exit(1);
                             }
                         }
@@ -947,32 +989,67 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
         if (typeCheck){
 
-            String index = n.f2.accept(this,identifier);
             String arraysName = n.f0.accept(this,identifier);
-            String arraystype = st.get(currSymbolTable).lookup(arraysName, identifier, currClass);
+            String index = n.f2.accept(this,identifier);
+            String expr = n.f5.accept(this,identifier);
+            String arraysType = st.get(currSymbolTable).lookup(arraysName, identifier, currClass);
 
-            /* Identifier or "arraysName" must me type "int[]" */
-            if (arraystype.equals("int[]") == false){
-                System.err.println("Error in array assignment: array required");
+            /* Identifier or "arraysName" must be type "int[]" */
+            if (arraysType.equals("int[]") == false){
+                System.err.println("error: in array assignment: array required");
                 System.exit(1);
             }
 
-            /* Check expr */
-            if (isNumeric(index))
-                return "";
-            else{
+            /* Check the index => must be type int*/       
+            if (isNumeric(index)){                       /* If index is a number */
+                /* countinue */
+            }else{                                       /* If index is a variable => check variable's type */
 
                 String indexType = st.get(currSymbolTable).lookup(index, identifier, currClass);
                 
-                /* If variable called "indexType" doesn't exist in Symbol Table */
+                /* Check if variable called "index" exists in the Symbol Table */
                 if (indexType == null){   
-                    System.err.println("Error in array assignement");
+                    System.err.println("error: in array assignment: cannot find symbol: " + index);
                     System.exit(1);
                 }
                 
-                /* If variable called "indexType" isn't type "int" */
+                /* Ckeck if variable called "indexType" isn't type "int" */
                 if (indexType.equals("int") == false){       
-                    System.err.println("Error in array assignement");
+                    System.err.println("error: in array assignment index must be type int");
+                    System.exit(1);
+                }
+            }
+
+            /* Check expression => must be type int */
+            if (isNumeric(expr))                       /* If index is a number */
+                return "ArrayAssignmentStatement";
+
+            else if(expr.contains("ArrayLookup") || expr.contains("+") || expr.contains("-") || expr.contains("*"))    /* If it's a PrimaryExpression it's already checked */
+                return "ArrayAssignmentStatement";
+
+            else if (expr.contains("MessageSend ")){             /* If it's a message send */
+
+                String exprType = expr.replace("MessageSend ","");
+
+                /* Ckeck if variable called "exprType" isn't type "int" */
+                if (exprType.equals("int") == false){       
+                    System.err.println("error: in array assignment expression must be type int");
+                    System.exit(1);
+                }
+
+            }else{                                       /* If expr is a variable => check variable's type */
+
+                String exprType = st.get(currSymbolTable).lookup(expr, identifier, currClass);
+                
+                /* Check if variable called "expr" exists in the Symbol Table */
+                if (exprType == null){   
+                    System.err.println("error: in array assignment: cannot find symbol: " + expr);
+                    System.exit(1);
+                }
+                
+                /* Ckeck if variable called "exprType" isn't type "int" */
+                if (exprType.equals("int") == false){       
+                    System.err.println("error: in array assignment expression must be type int");
                     System.exit(1);
                 }
             }
@@ -1028,27 +1105,27 @@ class MyVisitor extends GJDepthFirst<String,String>{
             if (this.isNumeric(varName))                            /* It's a number = int => ok */
                 return "System.out.println(" + varName + ")";
             
-            else if ((varName.contains("+")) || (varName.contains("-")) || (varName.contains("*")))
+            else if ((varName.contains("+")) || (varName.contains("-")) || (varName.contains("*")))     /* It's a primary expression */
                 return "System.out.println(" + varName + ")";
 
             else if (varName.contains("["))                         /* It's an index in an int array = int => ok */
                 return "System.out.println(" + varName + ")";
 
-            else if (varName.contains("MessageSend "))             /* Return a method call */
+            else if (varName.contains("MessageSend "))             /* It's a method call */
                 varType = varName.replace("MessageSend ","");
 
-            else                                                        /* Return a variable => search variable's type */
+            else                                                        /* It's a variable => get variable's type */
                 varType = st.get(currSymbolTable).lookup(varName, methodName, currClass);
             
-            /* Check if variable exists in the Symbol Table */
+            /* Check if variable exists in the Symbol Table (has been declared) */
             if (varType == null){
-                System.err.println("Error in print statement: " + varName + " wasn't found");
+                System.err.println("error: in print statement: cannot find symbol: " + varName);
                 System.exit(1);
             }
 
             /* Identifier or "arraysName" must me type "int[]" */
             if (varType.equals("int") == false){
-                System.err.println("Error in print statement: int required");
+                System.err.println("error: in print statement: int required");
                 System.exit(1);
             }
         }
@@ -1076,7 +1153,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
     * f2 -> PrimaryExpression()
     */
     public String visit(AndExpression n, String argu) throws Exception {
-        return n.f0.accept(this,argu) + " " +  n.f2.accept(this,argu);
+        return n.f0.accept(this,argu) + " && " +  n.f2.accept(this,argu);
     }
 
     /**
@@ -1085,7 +1162,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
     * f2 -> PrimaryExpression()
     */
     public String visit(CompareExpression n, String argu) throws Exception {
-        return n.f0.accept(this,argu) + " " +  n.f2.accept(this,argu);
+        return n.f0.accept(this,argu) + " < " +  n.f2.accept(this,argu);
     }
 
     /**
@@ -1094,41 +1171,6 @@ class MyVisitor extends GJDepthFirst<String,String>{
     * f2 -> PrimaryExpression()
     */
     public String visit(PlusExpression n, String methodName) throws Exception {
-
-        String expr1 = n.f0.accept(this,methodName);
-        String expr2 = n.f2.accept(this,methodName);
-        String expr5 = n.f2.accept(this,methodName);        
-
-        // if (typeCheck){
-
-        //     String expr1Type;
-        //     String expr2Type;
-
-        //     if (this.isNumeric(expr1))              /* Get the type of expr1 */
-        //         expr1Type = "int";
-        //     else if (expr1.contains("MessageSend"))
-        //         expr1Type = expr1.replace("MessageSend", "");
-        //     else
-        //         expr1Type = st.get(currSymbolTable).lookup(expr1, methodName, currClass);
-            
-        //     if (this.isNumeric(expr2))         /* Get the type of expr2 */
-        //         expr2Type = "int";
-        //     else if (expr2.contains("MessageSend"))
-        //         expr2Type = expr2.replace("MessageSend", "");
-        //     else
-        //         expr2Type = st.get(currSymbolTable).lookup(expr2, methodName, currClass);
-            
-        //     if ((expr1Type == null) || (expr2Type == null)){
-        //         System.err.println("error: couldn't find variable");
-        //         System.exit(1);
-        //     }
-
-        //     if (expr1Type.equals(expr2Type) == false){
-        //         System.err.println("error: types doesn't match");
-        //         System.exit(1);
-        //     }
-        // }
-
         return n.f0.accept(this,methodName) + " + " +  n.f2.accept(this,methodName);
     }
 
@@ -1147,7 +1189,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
     * f2 -> PrimaryExpression()
     */
     public String visit(TimesExpression n, String argu) throws Exception {
-        return n.f0.accept(this,argu) + " " +  n.f2.accept(this,argu);
+        return n.f0.accept(this,argu) + " * " +  n.f2.accept(this,argu);
     }
 
     /**
@@ -1165,13 +1207,13 @@ class MyVisitor extends GJDepthFirst<String,String>{
           
             /* Check if variable "arraysName" exists in the Symbol Table */
             if (arraysType == null){
-                System.err.println("Error in array lookup: array " + arraysName + " wasn't found");
+                System.err.println("error: in array lookup: array " + arraysName + " wasn't found");
                 System.exit(1);
             }
 
             /* Identifier or "arraysName" must be type "int[]" */
             if (arraysType.equals("int[]") == false){
-                System.err.println("Error in array lookup: array required");
+                System.err.println("error: in array lookup: array required");
                 System.exit(1);
             }
     
@@ -1183,33 +1225,33 @@ class MyVisitor extends GJDepthFirst<String,String>{
                 arraysIndex = arraysIndex.replace("MessageSend", "");
 
                 if (arraysIndex.equals("int") == false){
-                    System.err.println("Error in array lookup: index must be type int");
+                    System.err.println("error: in array lookup: index must be type int");
                     System.exit(1);
                 }
 
             }else{      /* If it's not a method call */ 
                 
-                if (this.isNumeric(arraysIndex) == false){      /* If it's not a number => it's a variable => check the variable */
+                if (this.isNumeric(arraysIndex) == false){      /* It's a variable => check the variable's type */
 
                     /* Get variable's "arraysIndexType" type */
                     String arraysIndexType = st.get(currSymbolTable).lookup(arraysIndex, methodName, currClass);
 
-                    /* Check if variable "arraysIndexType" exists in the Symbol Table */
+                    /* Check if variable "arraysIndex" exists in the Symbol Table */
                     if (arraysIndexType == null){
-                        System.err.println("Error in array lookup: " + arraysIndexType + " wasn't found");
+                        System.err.println("error: in array lookup: cannot find symbol " + arraysIndex);
                         System.exit(1);
                     }
 
                     /* Check if variable "arraysIndexType" is type "int" */
                     if (arraysIndexType.equals("int") == false){
-                        System.err.println("Error in array lookup: index must be type int");
+                        System.err.println("error: in array lookup: index must be type int");
                         System.exit(1);
                     }
                 }
             }
         }
 
-        return n.f0.accept(this,methodName) + "[" +  n.f2.accept(this,methodName) + "]";
+        return "ArrayLookup " + n.f0.accept(this,methodName) + "[" +  n.f2.accept(this,methodName) + "]";
     }
 
     /**
@@ -1225,15 +1267,15 @@ class MyVisitor extends GJDepthFirst<String,String>{
             
             String arraysType = st.get(currSymbolTable).lookup(arraysName, methodName, currClass);      /* Get array's type */
 
-            /* Check if variable "arraysName" exists in the Symbol Table */
+            /* Check if variable "arraysName" exists in the Symbol Table (has been declared) */
             if (arraysType == null){
-                System.err.println("Error in array length: array " + arraysName + " wasn't found");
+                System.err.println("error in ArrayLength: array " + arraysName + " wasn't found");
                 System.exit(1);
             }
 
             /* Identifier or "arraysName" must be type "int[]" */
             if (arraysType.equals("int[]") == false){
-                System.err.println("Error in array length: array required");
+                System.err.println("error: in ArrayLength: array required");
                 System.exit(1);
             }
         }
@@ -1249,80 +1291,75 @@ class MyVisitor extends GJDepthFirst<String,String>{
     * f4 -> ( ExpressionList() )?
     * f5 -> ")"
     */
-    public String visit(MessageSend n, String argu) throws Exception {
+    public String visit(MessageSend n, String methodName) throws Exception {
 
-        String idMethod = n.f2.accept(this, argu);
-        //System.out.println("METHOD NAME TOU MESS SEND : " + idMethod);
+        /* methodName = the name of the method that this MessageSend is inside */
+        String idMethod = n.f2.accept(this, methodName);
 
         if (typeCheck){
 
-            String prExpr = n.f0.accept(this,argu);
+            String prExpr = n.f0.accept(this,methodName);
             int stIndex = currSymbolTable;                                 /* the symbol table index to search */
             String className;
             String funType;
             
-            if (prExpr.contains("AllocationExpression")){
+            if (prExpr.contains("AllocationExpression")){           /* e.g new A() */
 
-                prExpr = prExpr.replace("AllocationExpression", "");        /* Remove the keyword "new" from the string to keep only the class name */
-                stIndex = this.findSTindex(prExpr);
-                className = prExpr;
+                className = prExpr.replace("AllocationExpression", "");      /* Remove the keyword "AllocationExpression" from the string to keep only the class name */
 
             }else if (prExpr.contains("(MessageSend ")){                    /* e.g. (p_node.GetLeft()).GetKey(); messageSend.messagesend */
 
                 prExpr = prExpr.replace("(MessageSend ", "");
-                prExpr = prExpr.replace(")", "");
-                className = prExpr;
+                className = prExpr.replace(")", "");
                     
             }else{
 
                 if (prExpr.equals("this"))
                     className = st.get(stIndex).getClassName(currClass);
                 else
-                    className = st.get(stIndex).lookup(prExpr, argu, currClass);       // variable's type is a className e.g. Tree r => Tree is a varType and a className
+                    className = st.get(stIndex).lookup(prExpr, methodName, currClass);       /* If prExpr is a variable => variable's type is a className e.g. Tree r => Tree is a varType and a className */
 
                 if (className == null){
-                    System.err.println("There is no variable called:" + prExpr + "& mesa sti sinartisi " + argu);
+                    System.err.println("error: cannot find symbol: " + prExpr + " inside the function called: " + methodName);
                     System.exit(1);
                 }
 
-                stIndex = this.findSTindex(className);    // varType == className
+            }
+            
+            stIndex = this.findSTindex(className);    // varType == className
 
-                if (stIndex == -1){
-                    System.err.println("There is no class called:" + className);
-                    System.exit(1);
-                }
+            /* Check if className exists in the Symbol Table */
+            if (stIndex == -1){
+                System.err.println("error: cannot find class: " + className);
+                System.exit(1);
             }
 
+            /* Get the function's type */
             funType = st.get(stIndex).findFunName(idMethod);
 
             /* Check if there is a function called "idMethod" in this class or in a parent class */
             if (funType == null){
-                System.err.println("Erorr: there is no method called: " + idMethod + " in class: " + className);
+                System.err.println("erorr: cannot find method: " + idMethod + " in class: " + className);
                 System.exit(1);
             }
             
             int numOfArgs; 
-            String argumentList = n.f4.present() ? n.f4.accept(this, argu) : "";      /* Get the function arguments */
+            String expressionList = n.f4.present() ? n.f4.accept(this, methodName) : "";      /* Get the function arguments */
             
-            if (argumentList.isEmpty())            /* Get the number of arguments in the function call */
+            if (expressionList.isEmpty())            /* Get the number of arguments in the function call */
                 numOfArgs = 0;
             else{
-                String[] args = argumentList.split(", |,");
+                String[] args = expressionList.split(", |,");
                 numOfArgs = args.length;
 
                 ArrayList<String> argsTypes = new ArrayList<String>();
     
-                for (int x = 0; x < args.length ; x++){         /* Get the type of each argument */
+                for (int x = 0; x < args.length ; x++){         /* Get the type of each argument in an array called argsTypes */
 
                     if (args[x].endsWith(" "))
                         args[x] = args[x].substring(0,args[x].length() - 1);
                     
-                    if (args[x].contains("+") || (args[x].contains("-")) || (args[x].contains("*"))){
-                        argsTypes.add("int");
-                        continue;
-                    }
-
-                    if (this.isNumeric(args[x])){
+                    if (this.isNumeric(args[x]) || args[x].contains("+") || (args[x].contains("-")) || (args[x].contains("*"))){
                         argsTypes.add("int");
                         continue;
                     }
@@ -1343,10 +1380,12 @@ class MyVisitor extends GJDepthFirst<String,String>{
                         continue;
                     }
 
-                    String arguType = st.get(currSymbolTable).lookup(args[x], argu, currClass);
-    
+                    /* If argument is a variable get argumen't type */
+                    String arguType = st.get(currSymbolTable).lookup(args[x], methodName, currClass);
+                    
+                    /* Check if argument exists in the Symbol Table (has been declared) */
                     if (arguType == null){
-                        System.err.println("error " + args[x]);
+                        System.err.println("error: cannot find symbol: " + args[x] + " in method: " + methodName);
                         System.exit(1);
                     }
 
@@ -1358,7 +1397,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
             /* Check if we have the same number of arguments in function definition and function call */
             if (numOfArgs != st.get(stIndex).getNumOfArguments(idMethod)){
-                System.err.println("Erorr: actual and formal argument lists differ in length required: " + numOfArgs + " found: " + st.get(stIndex).getNumOfArguments(idMethod));
+                System.err.println("erorr: actual and formal argument lists differ in length required: " + numOfArgs + " found: " + st.get(stIndex).getNumOfArguments(idMethod));
                 System.exit(1);
             }
             
@@ -1458,8 +1497,37 @@ class MyVisitor extends GJDepthFirst<String,String>{
     * f3 -> Expression()
     * f4 -> "]"
     */
-    public String visit(ArrayAllocationExpression n, String argu) throws Exception {
-        return "ArrayAllocationExpression " + n.f3.accept(this,argu);
+    public String visit(ArrayAllocationExpression n, String methodName) throws Exception {
+
+        String expr = n.f3.accept(this,methodName);
+
+        if (typeCheck){
+
+            /* expr must be type int (it's an index) */
+            if (isNumeric(expr))                            /* If index is a number */
+                return "ArrayAllocationExpression " + expr;
+
+            else if (expr.contains("+") || expr.contains("-") || expr.contains("*")){    /* If it's a PrimaryExpression => it's already checked */
+                return "ArrayAllocationExpression " + expr;
+
+            }else{                                       /* If expr is a variable => check variable's type */
+
+                String exprType = st.get(currSymbolTable).lookup(expr, methodName, currClass);
+                
+                /* Check if variable called "expr" exists in the Symbol Table */
+                if (exprType == null){   
+                    System.err.println("error: in array assignment: cannot find symbol: " + expr);
+                    System.exit(1);
+                }
+                
+                /* Ckeck if variable called "exprType" isn't type "int" */
+                if (exprType.equals("int") == false){       
+                    System.err.println("error: in array assignment expression must be type int");
+                    System.exit(1);
+                }
+            }
+        }
+        return "ArrayAllocationExpression " + expr;
     }
 
     /**
@@ -1476,9 +1544,9 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
             int stIndex = this.findSTindex(className);
             
-            /* Check if Identifier (className) exists in the Symbol Table (has been declared) */
+            /* Check if Identifier (className) exists (has been declared) */
             if (stIndex == -1){
-                System.err.println("There is no class called:" + className);
+                System.err.println("error: cannot find class: " + className);
                 System.exit(1);
             }
         }
