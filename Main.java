@@ -482,7 +482,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
         }
         
         super.visit(n, argu);
-        return "method delc";
+        return "Main Class";
     }
 
     /**
@@ -581,7 +581,6 @@ class MyVisitor extends GJDepthFirst<String,String>{
                 System.exit(1);
             }
 
-            //st.get(STindex).classList.add(new Class(className));           // add the new class in the classlist
             st.get(STindex).enter(className);
 
             NodeListOptional varDecls = n.f5;                                       /* Print the variable inside this function */
@@ -615,13 +614,10 @@ class MyVisitor extends GJDepthFirst<String,String>{
                 st.get(STindex).insertMethodInClass(methodName, methodsType, numOfArgs, currClass);    
             }
 
-            System.out.println(" -------------------------------- ");
-            System.out.println();
-
         }
 
         super.visit(n, argu);
-        return " ";
+        return "ClassExtendsDeclaration";
     }
 
     /**
@@ -663,7 +659,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
             /* Insert function arguments in the symbol table */
             for (int i = 0; i < temp.length ; i++){
                 String[] args = temp[i].split(" ");
-                for  (int j=0; j < args.length - 1 ; j+=2){
+                for  (int j = 0; j < args.length - 1; j+=2){
 
                     /* Check if an argument name is declared more than once */
                     if (st.get(currSymbolTable).funArguReDeclaration(args[j+1], methodName, currClass) != null){
@@ -850,7 +846,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
                 statDecl.f0.accept(this,argu);
             }
         }
-        return " block ";
+        return "Block";
     }
 
     /**
@@ -935,7 +931,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
                 }
             }
         }
-        return " assign statemetn ";
+        return "AssignmentStatement";
     }
 
     /**
@@ -949,11 +945,9 @@ class MyVisitor extends GJDepthFirst<String,String>{
     */
     public String visit(ArrayAssignmentStatement n, String identifier) throws Exception {
 
-        System.out.println("*** ARRAY ASSIGNEMTNS STATEMETN: **** ");
-
         if (typeCheck){
 
-            String expr = n.f2.accept(this,identifier);
+            String index = n.f2.accept(this,identifier);
             String arraysName = n.f0.accept(this,identifier);
             String arraystype = st.get(currSymbolTable).lookup(arraysName, identifier, currClass);
 
@@ -964,16 +958,26 @@ class MyVisitor extends GJDepthFirst<String,String>{
             }
 
             /* Check expr */
-            if (isNumeric(expr))
+            if (isNumeric(index))
                 return "";
-            else
-                if (st.get(currSymbolTable).lookup(expr, identifier, currClass) == null){       
+            else{
+
+                String indexType = st.get(currSymbolTable).lookup(index, identifier, currClass);
+                
+                /* If variable called "indexType" doesn't exist in Symbol Table */
+                if (indexType == null){   
                     System.err.println("Error in array assignement");
                     System.exit(1);
                 }
-            
+                
+                /* If variable called "indexType" isn't type "int" */
+                if (indexType.equals("int") == false){       
+                    System.err.println("Error in array assignement");
+                    System.exit(1);
+                }
+            }
         }
-        return " mees send";
+        return "ArrayAssignmentStatement";
     }
 
     /**
@@ -1280,6 +1284,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
                     }
                     
                     if (args[x].contains("this")){
+                        //argsTypes.add(className);
                         continue;
                     }
 
