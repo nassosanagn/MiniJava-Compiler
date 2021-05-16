@@ -230,7 +230,6 @@ class SymbolTable{
 
      /* Function to search for a variable "varName" only in function's called "functionName" arguments */
      public String classVarReDeclaration(String varName, int currClassIndex){     
-
         return this.classList.get(currClassIndex).classVarArray.get(varName);
     }
 
@@ -321,6 +320,9 @@ class SymbolTable{
             System.out.println(" --- Variables --- ");
 
             for (Map.Entry<String, String> entry : this.classList.get(i).classVarArray.entrySet()) {            /* For every variable in the class */
+
+                if (entry.getValue().equals("String[]"))           /* Don't print the main's arguments type "String[]" */
+                    continue;
                 
                 System.out.println(this.classList.get(i).className + "." + entry.getKey() + " : " + offset);
 
@@ -599,8 +601,8 @@ class MyVisitor extends GJDepthFirst<String,String>{
      */
     public String visit(ClassExtendsDeclaration n, String argu) throws Exception {
         
-        String className = n.f1.accept(this,argu);
         currClass++;                                    /* Add a new class in the current Symbol Table */
+        String className = n.f1.accept(this,argu);
 
         if (!typeCheck){
 
@@ -953,7 +955,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
                         /* Ignore symbols and words like "this", "true", "false" */
                         if (!(temp[i].isEmpty() ||temp[i].contains(".")  || temp[i].contains("&&") || temp[i].contains("+") || temp[i].contains("-") || temp[i].contains("*") || temp[i].contains("ArrayLookup") 
-                        || temp[i].contains("<") || temp[i].contains(")")|| temp[i].contains(",")|| temp[i].contains("this") || temp[i].contains("[") || temp[i].contains("true") || temp[i].contains("false"))){                      /* if temp[i] is a variable */
+                        || temp[i].contains("length") || temp[i].contains("<") || temp[i].contains(")")|| temp[i].contains(",")|| temp[i].contains("this") || temp[i].contains("[") || temp[i].contains("true") || temp[i].contains("false"))){                      /* if temp[i] is a variable */
                             
                             String varType = st.get(stIndex).lookup(temp[i], methodName, currClass);
 
@@ -1070,7 +1072,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
         n.f2.accept(this,argu);
         n.f4.accept(this,argu);
         n.f6.accept(this,argu);
-        return "if kai else ";
+        return "IfStatement";
     }
 
     /**
@@ -1509,6 +1511,14 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
             else if (expr.contains("+") || expr.contains("-") || expr.contains("*")){    /* If it's a PrimaryExpression => it's already checked */
                 return "ArrayAllocationExpression " + expr;
+            
+            }else if (expr.contains("MessageSend ")){    /* If it's a PrimaryExpression => it's already checked */
+                expr = expr.replace("MessageSend ", "");
+
+                if (expr.equals("int") == false){
+                    System.err.println("error: in array assignment expression must be type int");
+                    System.exit(1);
+                }
 
             }else{                                       /* If expr is a variable => check variable's type */
 
@@ -1527,7 +1537,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
                 }
             }
         }
-        return "ArrayAllocationExpression " + expr;
+        return "ArrayAllocationExpression " + "expr";
     }
 
     /**
