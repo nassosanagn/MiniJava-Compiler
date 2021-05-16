@@ -871,16 +871,16 @@ class MyVisitor extends GJDepthFirst<String,String>{
                 System.exit(1);
             }
 
-            if (expr.contains("new int[")){                     /* If it's a new int[] (array allocation) */
+            if (expr.contains("ArrayAllocationExpression ")){                     /* If it's a new int[] (array allocation) */
 
                 if (idType.equals("int[]") == false){
                     System.err.println("error: in AllocationExpression " + idType + " cannot be converted to int[]");
                     System.exit(1);
                 }
 
-            }else if ((expr.contains("new "))){                 /* If it's new class allocation e.g. new A() */
+            }else if ((expr.contains("AllocationExpression"))){                 /* If it's new class allocation e.g. new A() */
 
-                String className = expr.replace("new ", "");
+                String className = expr.replace("AllocationExpression", "");
 
                 if (idType.equals(className) == false){
                     System.err.println("error: in AllocationExpression " + idType + " cannot be converted to " + className);
@@ -1031,7 +1031,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
             else if ((varName.contains("+")) || (varName.contains("-")) || (varName.contains("*")))
                 return "System.out.println(" + varName + ")";
 
-            else if (varName.contains("["))                         /* It's an index in an int array => ok */
+            else if (varName.contains("["))                         /* It's an index in an int array = int => ok */
                 return "System.out.println(" + varName + ")";
 
             else if (varName.contains("MessageSend "))             /* Return a method call */
@@ -1093,8 +1093,42 @@ class MyVisitor extends GJDepthFirst<String,String>{
     * f1 -> "+"
     * f2 -> PrimaryExpression()
     */
-    public String visit(PlusExpression n, String argu) throws Exception {
-        return n.f0.accept(this,argu) + " + " +  n.f2.accept(this,argu);
+    public String visit(PlusExpression n, String methodName) throws Exception {
+
+        String expr1 = n.f0.accept(this,methodName);
+        String expr2 = n.f2.accept(this,methodName);
+
+        // if (typeCheck){
+
+        //     String expr1Type;
+        //     String expr2Type;
+
+        //     if (this.isNumeric(expr1))              /* Get the type of expr1 */
+        //         expr1Type = "int";
+        //     else if (expr1.contains("MessageSend"))
+        //         expr1Type = expr1.replace("MessageSend", "");
+        //     else
+        //         expr1Type = st.get(currSymbolTable).lookup(expr1, methodName, currClass);
+            
+        //     if (this.isNumeric(expr2))         /* Get the type of expr2 */
+        //         expr2Type = "int";
+        //     else if (expr2.contains("MessageSend"))
+        //         expr2Type = expr2.replace("MessageSend", "");
+        //     else
+        //         expr2Type = st.get(currSymbolTable).lookup(expr2, methodName, currClass);
+            
+        //     if ((expr1Type == null) || (expr2Type == null)){
+        //         System.err.println("error: couldn't find variable");
+        //         System.exit(1);
+        //     }
+
+        //     if (expr1Type.equals(expr2Type) == false){
+        //         System.err.println("error: types doesn't match");
+        //         System.exit(1);
+        //     }
+        // }
+
+        return n.f0.accept(this,methodName) + " + " +  n.f2.accept(this,methodName);
     }
 
     /**
@@ -1182,8 +1216,28 @@ class MyVisitor extends GJDepthFirst<String,String>{
     * f1 -> "."
     * f2 -> "length"
     */
-    public String visit(ArrayLength n, String argu) throws Exception {
-        return n.f0.accept(this,argu) + ".length"; 
+    public String visit(ArrayLength n, String methodName) throws Exception {
+
+        String arraysName = n.f0.accept(this,methodName);
+        
+        if (typeCheck){
+            
+            String arraysType = st.get(currSymbolTable).lookup(arraysName, methodName, currClass);      /* Get array's type */
+
+            /* Check if variable "arraysName" exists in the Symbol Table */
+            if (arraysType == null){
+                System.err.println("Error in array length: array " + arraysName + " wasn't found");
+                System.exit(1);
+            }
+
+            /* Identifier or "arraysName" must be type "int[]" */
+            if (arraysType.equals("int[]") == false){
+                System.err.println("Error in array length: array required");
+                System.exit(1);
+            }
+        }
+
+        return arraysName + ".length"; 
     }
 
     /**
@@ -1206,9 +1260,9 @@ class MyVisitor extends GJDepthFirst<String,String>{
             String className;
             String funType;
             
-            if (prExpr.contains("new ")){
+            if (prExpr.contains("AllocationExpression")){
 
-                prExpr = prExpr.replace("new ", "");        /* Remove the keyword "new" from the string to keep only the class name */
+                prExpr = prExpr.replace("AllocationExpression", "");        /* Remove the keyword "new" from the string to keep only the class name */
                 stIndex = this.findSTindex(prExpr);
                 className = prExpr;
 
@@ -1284,7 +1338,11 @@ class MyVisitor extends GJDepthFirst<String,String>{
                     }
                     
                     if (args[x].contains("this")){
+<<<<<<< HEAD
                         //argsTypes.add(className);
+=======
+                        argsTypes.add(st.get(currSymbolTable).getClassName(currClass));
+>>>>>>> 08de2f88a2e1f01cd56695465a1f2b8b62a9c15f
                         continue;
                     }
 
@@ -1303,9 +1361,6 @@ class MyVisitor extends GJDepthFirst<String,String>{
 
             /* Check if we have the same number of arguments in function definition and function call */
             if (numOfArgs != st.get(stIndex).getNumOfArguments(idMethod)){
-                System.err.println("expr: " + prExpr);
-                System.err.println("Sth methodo: " + idMethod);
-                System.err.println("To stIndex: " + stIndex);
                 System.err.println("Erorr: actual and formal argument lists differ in length required: " + numOfArgs + " found: " + st.get(stIndex).getNumOfArguments(idMethod));
                 System.exit(1);
             }
@@ -1407,7 +1462,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
     * f4 -> "]"
     */
     public String visit(ArrayAllocationExpression n, String argu) throws Exception {
-        return "new int[" + n.f3.accept(this,argu);
+        return "ArrayAllocationExpression " + n.f3.accept(this,argu);
     }
 
     /**
@@ -1431,7 +1486,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
             }
         }
 
-        return "new " + className;
+        return "AllocationExpression" + className;
     }
 
     /**
