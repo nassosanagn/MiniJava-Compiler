@@ -559,7 +559,7 @@ class MyVisitor extends GJDepthFirst<String,String>{
             }
 
             NodeListOptional methodDecls = n.f4;                                      
-            for (int i = 0; i < methodDecls.size(); ++i){           /*  f4 Method Declarationss */
+            for (int i = 0; i < methodDecls.size(); ++i){           /*  f4 Method Declarations */
 
                 MethodDeclaration methodDecl = (MethodDeclaration) methodDecls.elementAt(i);
                 String methodName = methodDecl.f2.accept(this,argu);
