@@ -108,7 +108,6 @@ class SymbolTable{
     /* Insert the function "functionName" in the class with index "currClassIndex" */
     public void insertMethodInClass(String functionName, String returnType, int numOfArgs, int currClassIndex){
         (this.classList.get(currClassIndex)).funList.add(new Function(functionName, returnType, numOfArgs));
-        
     }
 
     /* Insert a new argument "arguName" in the function "functionName" in the class with index "currClassIndex" */
