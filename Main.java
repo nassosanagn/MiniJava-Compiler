@@ -553,7 +553,6 @@ class MyVisitor extends GJDepthFirst<String,String>{
                     System.err.println("error: class variable: " + varId + " double declaration");
                     System.exit(1);
                 }
-
                 /* Insert the class variables in this Symbol Table */
                 st.get(currSymbolTable).insertVarInClass(varId, varType, currClass);    
             }
